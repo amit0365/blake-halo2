@@ -4,7 +4,7 @@
  #![allow(unused_variables)]
  #![allow(unreachable_code)]
 
- pub mod table16;
+mod table16;
  //pub mod xor;
 
  

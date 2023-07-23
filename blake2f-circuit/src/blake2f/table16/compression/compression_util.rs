@@ -1,4 +1,5 @@
 // todo why word lo, hi uses without lookup? post on halo2 discord   
+// todo rotation
 
 // will the spread form handle carry? i think so. in that case keep the calc in spread
 // does the carry get added to the e_new value in the next round

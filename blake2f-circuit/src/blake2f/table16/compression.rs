@@ -1,8 +1,8 @@
 //todo fix xor gates rotation gates and word lo,mo,el,hi
 
-pub mod compression_gate;
-pub mod subregion_initial;
-pub mod compression_util;
+mod compression_gate;
+mod subregion_initial;
+mod compression_util;
 
 
 use halo2_proofs::{
@@ -32,7 +32,6 @@ use crate::blake2f::table16::{util::{i2lebsp, lebs2ip}};
 //use super::{spread_table::{SpreadVar, SpreadInputs}};
 // utils::{i2lebsp, lebs2ip}, , table16::{self, Table16Assignment}
 //use super::spread_table::AssignedBits;
-
 
 pub trait VectorVar<
     const A_LEN: usize,
@@ -134,42 +133,42 @@ impl VectorVar<32, 32, 32, 32> for AbcdVar {
 
 #[derive(Clone, Debug)]
 pub struct EfghVar {
-    a: SpreadVar<16, 32>,
-    b_lo: SpreadVar<8, 16>,
-    b_hi: SpreadVar<8, 16>,
-    c: SpreadVar<16, 32>,
-    d: SpreadVar<16, 32>,
+    m: SpreadVar<16, 32>,
+    n_lo: SpreadVar<8, 16>,
+    n_hi: SpreadVar<8, 16>,
+    o: SpreadVar<16, 32>,
+    p: SpreadVar<16, 32>,
 }
 
 impl EfghVar {
-    fn a_range() -> Range<usize> {
+    fn m_range() -> Range<usize> {
         0..16
     }
 
-    fn b_lo_range() -> Range<usize> {
+    fn n_lo_range() -> Range<usize> {
         16..24
     }
 
-    fn b_hi_range() -> Range<usize> {
+    fn n_hi_range() -> Range<usize> {
         24..32
     }
 
-    fn c_range() -> Range<usize> {
+    fn o_range() -> Range<usize> {
         32..48
     }
 
-    fn d_range() -> Range<usize> {
+    fn p_range() -> Range<usize> {
         48..64
     }
 
     fn pieces(val: u64) -> Vec<Vec<bool>> {
         let val: [bool; 64] = i2lebsp(val.into());
         vec![
-            val[Self::a_range()].to_vec(),
-            val[Self::c_range()].to_vec(),
-            val[Self::b_lo_range()].to_vec(),
-            val[Self::b_hi_range()].to_vec(),
-            val[Self::d_range()].to_vec(),
+            val[Self::m_range()].to_vec(),
+            val[Self::n_lo_range()].to_vec(),
+            val[Self::n_hi_range()].to_vec(),
+            val[Self::o_range()].to_vec(),
+            val[Self::p_range()].to_vec(),
         ]
     }
 }
@@ -177,17 +176,17 @@ impl EfghVar {
 
 impl VectorVar<32,32,32,32> for EfghVar {
 
-    fn spread_a(&self) -> Value<[bool; 32]> {
-        self.a.spread.value().map(|v| v.0)
+    fn spread_m(&self) -> Value<[bool; 32]> {
+        self.m.spread.value().map(|v| v.0)
     }
 
-    fn spread_b(&self) -> Value<[bool; 32]> {
-        self.b_lo
+    fn spread_n(&self) -> Value<[bool; 32]> {
+        self.n_lo
             .spread
             .value()
-            .zip(self.b_hi.spread.value())
-            .map(|(b_lo, b_hi)| {
-                b_lo.iter()
+            .zip(self.n_hi.spread.value())
+            .map(|(n_lo, b_hi)| {
+                n_lo.iter()
                     .chain(b_hi.iter())
                     .copied()
                     .collect::<Vec<_>>()
@@ -196,56 +195,56 @@ impl VectorVar<32,32,32,32> for EfghVar {
             })
     }
 
-    fn spread_c(&self) -> Value<[bool; 32]> {
-        self.c.spread.value().map(|v| v.0)
+    fn spread_o(&self) -> Value<[bool; 32]> {
+        self.o.spread.value().map(|v| v.0)
     }
 
-    fn spread_d(&self) -> Value<[bool; 32]> {
-        self.d.spread.value().map(|v| v.0)
+    fn spread_p(&self) -> Value<[bool; 32]> {
+        self.p.spread.value().map(|v| v.0)
     }
 
 }
 
 #[derive(Clone, Debug)]
 pub struct IjklVar {
-    a: SpreadVar<16, 32>,
-    b: SpreadVar<16, 32>,
-    c: SpreadVar<16, 32>,
-    d_lo: SpreadVar<1, 2>,
-    d_hi: SpreadVar<15, 32>,
+    m: SpreadVar<16, 32>,
+    n: SpreadVar<16, 32>,
+    o: SpreadVar<16, 32>,
+    p_lo: SpreadVar<1, 2>,
+    p_hi: SpreadVar<15, 32>,
 }
 
 impl IjklVar {
     
-    fn a_range() -> Range<usize> {
+    fn m_range() -> Range<usize> {
         1..16
     }
 
-    fn b_range() -> Range<usize> {
+    fn n_range() -> Range<usize> {
         16..32
     }
 
-    fn c_range() -> Range<usize> {
+    fn o_range() -> Range<usize> {
         32..48
     }
 
 
-    fn d_lo_range() -> Range<usize> {
+    fn p_lo_range() -> Range<usize> {
         48..49
     }
 
-    fn d_hi_range() -> Range<usize> {
+    fn p_hi_range() -> Range<usize> {
         49..64
     }
 
     fn pieces(val: u64) -> Vec<Vec<bool>> {
         let val: [bool; 64] = i2lebsp(val.into());
         vec![
-            val[Self::b_range()].to_vec(),
-            val[Self::c_range()].to_vec(),
-            val[Self::d_lo_range()].to_vec(),
-            val[Self::d_hi_range()].to_vec(),
-            val[Self::a_range()].to_vec(),
+            val[Self::n_range()].to_vec(),
+            val[Self::o_range()].to_vec(),
+            val[Self::p_lo_range()].to_vec(),
+            val[Self::p_hi_range()].to_vec(),
+            val[Self::m_range()].to_vec(),
         ]
     }
 }
@@ -253,26 +252,26 @@ impl IjklVar {
 
 impl VectorVar<32,32,32,32> for IjklVar {
 
-    fn spread_a(&self) -> Value<[bool; 32]> {
-        self.a.spread.value().map(|v| v.0)
+    fn spread_m(&self) -> Value<[bool; 32]> {
+        self.m.spread.value().map(|v| v.0)
     }
 
-    fn spread_b(&self) -> Value<[bool; 32]> {
-        self.b.spread.value().map(|v| v.0)
+    fn spread_n(&self) -> Value<[bool; 32]> {
+        self.n.spread.value().map(|v| v.0)
     }
 
-    fn spread_c(&self) -> Value<[bool; 32]> {
-        self.c.spread.value().map(|v| v.0)
+    fn spread_o(&self) -> Value<[bool; 32]> {
+        self.o.spread.value().map(|v| v.0)
     }
 
-    fn spread_d(&self) -> Value<[bool; 32]> {
-        self.d_lo
+    fn spread_p(&self) -> Value<[bool; 32]> {
+        self.p_lo
             .spread
             .value()
-            .zip(self.d_hi.spread.value())
-            .map(|(d_lo, d_hi)| {
-                d_lo.iter()
-                    .chain(d_hi.iter())
+            .zip(self.p_hi.spread.value())
+            .map(|(p_lo, p_hi)| {
+                p_lo.iter()
+                    .chain(p_hi.iter())
                     .copied()
                     .collect::<Vec<_>>()
                     .try_into()
@@ -607,14 +606,14 @@ impl CompressionConfig {
             let spread_c = meta.query_advice(a_2, Rotation::next());
             let d = meta.query_advice(a_1, Rotation(2)); // 7-bit chunk
             let spread_d = meta.query_advice(a_2, Rotation(2));
-            // let word_lo = meta.query_advice(a_1, Rotation::prev());
-            // let spread_word_lo = meta.query_advice(a_2, Rotation::prev());
-            // let word_mo = meta.query_advice(a_1, Rotation::cur());
-            // let spread_word_mo = meta.query_advice(a_2, Rotation::cur());
-            // let word_el = meta.query_advice(a_1, Rotation::next());
-            // let spread_word_el = meta.query_advice(a_2, Rotation::next());
-            // let word_hi = meta.query_advice(a_1, Rotation(2));
-            // let spread_word_hi = meta.query_advice(a_2, Rotation(2));
+            let word_lo = meta.query_advice(a_1, Rotation::prev());
+            let spread_word_lo = meta.query_advice(a_2, Rotation::prev());
+            let word_mo = meta.query_advice(a_1, Rotation::cur());
+            let spread_word_mo = meta.query_advice(a_2, Rotation::cur());
+            let word_el = meta.query_advice(a_1, Rotation::next());
+            let spread_word_el = meta.query_advice(a_2, Rotation::next());
+            let word_hi = meta.query_advice(a_1, Rotation(2));
+            let spread_word_hi = meta.query_advice(a_2, Rotation(2));
 
             CompressionGate::s_decompose_abcd(
                 s_decompose_abcd,
@@ -626,14 +625,14 @@ impl CompressionConfig {
                 spread_c,
                 d,
                 spread_d,
-                // word_lo,
-                // spread_word_lo,
-                // word_mo,
-                // spread_word_mo,
-                // word_el,
-                // spread_word_el,
-                // word_hi,
-                // spread_word_hi,
+                word_lo,
+                spread_word_lo,
+                word_mo,
+                spread_word_mo,
+                word_el,
+                spread_word_el,
+                word_hi,
+                spread_word_hi,
             )
         });
 

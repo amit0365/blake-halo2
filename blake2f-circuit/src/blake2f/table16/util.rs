@@ -19,7 +19,7 @@ pub const MASK_EVEN_32: u32 = 0x55555555;
 ///
 /// Panics if the expected length of the sequence `NUM_BITS` exceeds
 /// 64.
-pub fn i2lebsp<const NUM_BITS: usize>(int: u128) -> [bool; NUM_BITS] {
+pub fn i2lebsp<const NUM_BITS: usize>(int: u64) -> [bool; NUM_BITS] {
     /// Takes in an FnMut closure and returns a constant-length array with elements of
     /// type `Output`.
     fn gen_const_array<Output: Copy + Default, const LEN: usize>(
@@ -39,7 +39,7 @@ pub fn i2lebsp<const NUM_BITS: usize>(int: u128) -> [bool; NUM_BITS] {
         ret
     }
 
-    assert!(NUM_BITS <= 128);
+    assert!(NUM_BITS <= 64);
     gen_const_array(|mask: usize| (int & (1 << mask)) != 0)
 }
 
