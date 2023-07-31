@@ -128,7 +128,7 @@ impl<F: PrimeField> CompressionGate<F> {
 
 
 
-    // Decompose `A,B,C,D` words
+    // Decompose `L,K,J,I` words
     // (1, 15, 16, 16, 16)-bit chunks
     #[allow(clippy::too_many_arguments)]
     pub fn s_decompose_ijkl(
