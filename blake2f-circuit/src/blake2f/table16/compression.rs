@@ -1,8 +1,8 @@
 //todo fix xor gates rotation gates and word lo,mo,el,hi
 
-// mod compression_gate;
-// mod subregion_initial;
-// mod compression_util;
+mod compression_gate;
+mod subregion_initial;
+mod compression_util;
 
 
 use halo2_proofs::{

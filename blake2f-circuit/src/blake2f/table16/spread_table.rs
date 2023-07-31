@@ -13,13 +13,14 @@ use halo2_proofs::{
 use std::convert::TryInto;
 use std::marker::PhantomData;
 
-//use super::{util::{spread_bits, lebs2ip, i2lebsp}, compression::RoundWordSpread, AssignedBits};
+use super::{util::{spread_bits, lebs2ip, i2lebsp}, compression::RoundWordSpread, AssignedBits};
 
 use super::{util::*};
 
 const BITS_8: usize = 1 << 8;
 const BITS_15: usize = 1 << 15;
 
+/* 
 #[derive(Clone, Debug)]
  // Little-endian bits (up to 64 bits)
  pub struct Bits<const LEN: usize>([bool; LEN]);
@@ -195,6 +196,8 @@ const BITS_15: usize = 1 << 15;
          .map(AssignedBits)
      }
  }
+
+*/
 
 
 /// An input word into a lookup, containing (tag, dense, spread)
