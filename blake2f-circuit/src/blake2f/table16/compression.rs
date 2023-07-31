@@ -1,8 +1,8 @@
 //todo fix xor gates rotation gates and word lo,mo,el,hi
 
-mod compression_gate;
-mod subregion_initial;
-mod compression_util;
+// mod compression_gate;
+// mod subregion_initial;
+// mod compression_util;
 
 
 use halo2_proofs::{
@@ -551,6 +551,7 @@ pub(crate) struct CompressionConfig {
 
 impl Table16Assignment for CompressionConfig {}
 
+// implements mixing function
 impl CompressionConfig {
     pub(super) fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
@@ -567,11 +568,13 @@ impl CompressionConfig {
         let s_vector_c2 = meta.selector();
         let s_vector_d2 = meta.selector();
 
-        // Decomposition gate for AbcdVar
+        // (16, 16, 16, 16)-bit chunks
         let s_decompose_abcd = meta.selector();
-        // Decomposition gate for EfghVar
+
+        // (16, 16, 8, 8, 16)-bit chunks
         let s_decompose_efgh = meta.selector();
 
+        // (1, 15, 16, 16, 16)-bit chunks
         let s_decompose_ijkl = meta.selector();
 
         let s_digest = meta.selector();
@@ -586,26 +589,36 @@ impl CompressionConfig {
         let a_5 = extras[2];
         let a_6 = extras[3];
 
+        // todo if don't constrain tag how lookup work 
+        // do we need addition modulo in blake2b
+        // todo make the circuit wider to reduce FFTs, this would increase proof size due to more poly commit
 
         // Decompose `A,B,C,D` words into (16, 16, 16, 16)-bit chunks.
 
+        // Structure should be tag m, m , s_m as we lookup tuple a0,a1,a2
+        // no need to constrain tag for 16 bits
         //    a0   |  a1  |  a2    |  a3    |  a4   |   a5   |    a6    |
-        //  tag_m  |  m   |  s_m   |  ---   |  ---  |  ---   |  ---     |
-        //  tag_n  |  n   |  s_n   |  ---   |  ---  |  ---   |  ---     |
-        //  tag_o  |  o   |  s_o   |  ---   |  ---  |  ---   |   ---    |
-        //  tag_p  |  p   |  s_p   |  ---   |  ---  |  ---   |  ---     |
+        //     0   |  m   |  s_m   |  ---   |  ---  |  ---   |  ---     |
+        //     0   |  n   |  s_n   |  ---   |  ---  |  ---   |  ---     |
+        //     0   |  o   |  s_o   |  ---   |  ---  |  ---   |   ---    |
+        //     0   |  p   |  s_p   |  ---   |  ---  |  ---   |  ---     |
 
         // Decompose `A,B,C,D` words into (16, 16, 16, 16)-bit chunks.
+        // VirtualCells API why ignoring _?
         meta.create_gate("decompose ABCD", |meta| {
+
             let s_decompose_abcd = meta.query_selector(s_decompose_abcd);
-            let a = meta.query_advice(a_1, Rotation::prev()); // 2-bit chunk
+
+            let a = meta.query_advice(a_1, Rotation::prev()); // 16-bit chunk
             let spread_a = meta.query_advice(a_2, Rotation::prev());
-            let b = meta.query_advice(a_1, Rotation::cur()); // 11-bit chunk
+            let b = meta.query_advice(a_1, Rotation::cur()); //  16-bit chunk
             let spread_b = meta.query_advice(a_2, Rotation::cur());
-            let c = meta.query_advice(a_1, Rotation::next()); // 3-bit chunk
+            let c = meta.query_advice(a_1, Rotation::next()); // 16-bit chunk
             let spread_c = meta.query_advice(a_2, Rotation::next());
-            let d = meta.query_advice(a_1, Rotation(2)); // 7-bit chunk
+            let d = meta.query_advice(a_1, Rotation(2)); // 16-bit chunk
             let spread_d = meta.query_advice(a_2, Rotation(2));
+
+            // are they required? ask halo2/pse discord
             let word_lo = meta.query_advice(a_1, Rotation::prev());
             let spread_word_lo = meta.query_advice(a_2, Rotation::prev());
             let word_mo = meta.query_advice(a_1, Rotation::cur());
@@ -638,27 +651,30 @@ impl CompressionConfig {
 
 
         //     a0      |  a1     |  a2       |  a3    |  a4     |  a5    |  a6      |
-        //   {0,1,2}   |  e      |  s_e      |  ---   |  ---    |  w_lo  |  s_w_lo  |
+        //      0      |  e      |  s_e      |  ---   |  ---    |  w_lo  |  s_w_lo  |
         //    {0,1}    |  f_lo   |  s_f_lo   |  ---   |  ---    |  w_mo  |  s_w_mo  |
         //    {0,1}    |  f_hi   |  s_f_hi   |  ---   |  ---    |  w_el  |  s_w_el  |
-        //   {0,1,2}   |  g      |  s_g      |  ---   |  ---    |  w_hi  |  s_w_hi  |
-        //   {0,1,2}   |  h      |  s_h      |  ---   |  ---    |  ---   |   ---    |
+        //      0      |  g      |  s_g      |  ---   |  ---    |  w_hi  |  s_w_hi  |
+        //      0      |  h      |  s_h      |  ---   |  ---    |  ---   |   ---    |
 
 
-        // todo fix notation efgh and abcd
         // Decompose `H,G,F,E` words into (16, 16, 8, 8, 16)-bit chunks.
         meta.create_gate("Decompose EFGH", |meta| {
+
             let s_decompose_efgh = meta.query_selector(s_decompose_efgh);
-            let a = meta.query_advice(a_1, Rotation::prev()); // 16-bit chunk
-            let spread_a = meta.query_advice(a_2, Rotation::prev());
-            let b_lo = meta.query_advice(a_1, Rotation::cur()); // 8-bit chunk
-            let spread_b_lo = meta.query_advice(a_2, Rotation::cur());
-            let b_hi = meta.query_advice(a_1, Rotation::next()); // 8-bit chunk
-            let spread_b_hi = meta.query_advice(a_2, Rotation::next());
-            let c = meta.query_advice(a_1, Rotation(2)); // 16-bit chunk
-            let spread_c = meta.query_advice(a_2, Rotation(2));
-            let d = meta.query_advice(a_1, Rotation(3)); // 16-bit chunk
-            let spread_d = meta.query_advice(a_2, Rotation(3));
+
+            let e = meta.query_advice(a_1, Rotation::prev()); // 16-bit chunk
+            let spread_e = meta.query_advice(a_2, Rotation::prev());
+            let f_lo = meta.query_advice(a_1, Rotation::cur()); // 8-bit chunk
+            let spread_f_lo = meta.query_advice(a_2, Rotation::cur());
+            let f_hi = meta.query_advice(a_1, Rotation::next()); // 8-bit chunk
+            let spread_f_hi = meta.query_advice(a_2, Rotation::next());
+            let g = meta.query_advice(a_1, Rotation(2)); // 16-bit chunk
+            let spread_g = meta.query_advice(a_2, Rotation(2));
+            let h = meta.query_advice(a_1, Rotation(3)); // 16-bit chunk
+            let spread_h = meta.query_advice(a_2, Rotation(3));
+
+            // check if required?
             let word_lo = meta.query_advice(a_5, Rotation::prev());
             let spread_word_lo = meta.query_advice(a_6, Rotation::prev());
             let word_mo = meta.query_advice(a_5, Rotation::cur());
@@ -682,23 +698,29 @@ impl CompressionConfig {
                 spread_d,
                 word_lo,
                 spread_word_lo,
+                word_mo,
+                spread_word_mo,
+                word_el,
+                spread_word_el,
                 word_hi,
                 spread_word_hi,
             )
         });
 
         // Decompose `I,J,K,L` words into (1, 15, 16, 16)-bit chunks.
-        // add range check for 1 bit chunk
+        // add range check for 1 bit chunk, does not require lookup
         //    a0      |  a1     |  a2       |  a3    |  a4     |  a5    |  a6      |
         //   {0,1}    |  i_hi   |  s_i_hi   |  i_lo  |  s_i_lo |  w_lo  |  s_w_lo  |
-        //   {0,1,2}  |  j      |  s_j      |  ---   |  ---    |  w_mo  |  s_w_mo  |
-        //   {0,1,2}  |  k      |  s_k      |  ---   |  ---    |  w_el  |  s_w_el  |
-        //   {0,1,2}  |  l      |  s_l      |  ---   |  ---    |  w_hi  |  s_w_hi  |
+        //     0      |  j      |  s_j      |  ---   |  ---    |  w_mo  |  s_w_mo  |
+        //     0      |  k      |  s_k      |  ---   |  ---    |  w_el  |  s_w_el  |
+        //     0      |  l      |  s_l      |  ---   |  ---    |  w_hi  |  s_w_hi  |
 
 
         // Decompose `L,K,J,I` words into (16, 16, 16, 15, 1)-bit chunks.
         meta.create_gate("Decompose IJKL", |meta| {
+
             let s_decompose_ijkl = meta.query_selector(s_decompose_ijkl);
+
             let i_lo = meta.query_advice(a_3, Rotation::prev()); // 1-bit chunk
             let spread_i_lo = meta.query_advice(a_4, Rotation::prev());
             let i_hi = meta.query_advice(a_1, Rotation::prev()); // 15-bit chunk
@@ -709,6 +731,8 @@ impl CompressionConfig {
             let spread_k = meta.query_advice(a_2, Rotation::next());
             let l = meta.query_advice(a_1, Rotation(2)); // 16-bit chunk
             let spread_l = meta.query_advice(a_2, Rotation(2));
+
+
             let word_lo = meta.query_advice(a_5, Rotation::prev());
             let spread_word_lo = meta.query_advice(a_6, Rotation::prev());
             let word_mo = meta.query_advice(a_5, Rotation::cur());
@@ -732,6 +756,10 @@ impl CompressionConfig {
                 spread_l,
                 word_lo,
                 spread_word_lo,
+                word_mo,
+                spread_word_mo,
+                word_el,
+                spread_word_el,
                 word_hi,
                 spread_word_hi,
             )

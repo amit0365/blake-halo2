@@ -5,6 +5,7 @@
         "./blake2f-circuit/Cargo.toml",
         "./blake2f-circuit/Cargo.toml",
         "./blake2f-circuit/Cargo.toml",
+        "./blake2f-circuit/Cargo.toml",
         "./blake2f-circuit/Cargo.toml"
     ],
     "cSpell.words": [
