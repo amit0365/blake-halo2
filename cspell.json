@@ -27,9 +27,11 @@
         "tagb",
         "tagc",
         "tagd",
-        "vals"
+        "vals",
+        "xparc"
     ],
     "ignoreWords": [
+        "keygen",
         "stateword"
     ],
     "import": []

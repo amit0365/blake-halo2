@@ -27,7 +27,7 @@ const STATE: usize = 8;
 
 use compression_gate::MixingGate;
 
-use crate::blake2f::table16::{util::{i2lebsp, lebs2ip}};
+use crate::blake2f::table16::util::{i2lebsp, lebs2ip};
 
 //use super::{spread_table::{SpreadVar, SpreadInputs}};
 // utils::{i2lebsp, lebs2ip}, , table16::{self, Table16Assignment}
@@ -745,12 +745,9 @@ impl MixingConfig {
         });
 
         // The operand and result chunks can be constrained using spread, by looking up each chunk in the "dense" column within a subset of the table.
-        // This way we additionally get the "spread" form of the output for free, use in the addition gates?? figure from E_new gate ? decompose_a
+        // This way we additionally get the "spread" form of the output for free. no use of spread chunks in the gate
         // colns a1,a2 are defined to carry spread outputs for the result chunks in table16, might need to change gate layout
 
-        // carry must be constrained to the precise range of allowed carry values for the number of operands. 
-        // We do this with a small range constraint.?? figure from E_new gate
-        // Va1 = Va + Vb + x abcd words
 
         //     a0     |   a1    |    a2     |  a3    |  a4    |  a5    |  a6   |  a7    |  a8     |  a9    |
         //   -------  |  m_a1   |  s_m_a1   |  n_a1  | s_n_a1 |  m_a   |  n_a  |  o_a   |  p_a    |  c_a1  | 
@@ -766,16 +763,9 @@ impl MixingConfig {
             let s_vector_a1 = meta.query_selector(s_vector_a1);
 
             let vector_m_a1 = meta.query_advice(a_1, Rotation::prev());
-            let vector_s_m_a1 = meta.query_advice(a_2, Rotation::prev());
-
             let vector_n_a1 = meta.query_advice(a_3, Rotation::prev());
-            let vector_s_n_a1 = meta.query_advice(a_4, Rotation::prev());
-
             let vector_o_a1 = meta.query_advice(a_1, Rotation::cur());
-            let vector_s_o_a1 = meta.query_advice(a_2, Rotation::cur());
-
             let vector_p_a1 = meta.query_advice(a_3, Rotation::cur());
-            let vector_s_p_a1 = meta.query_advice(a_4, Rotation::cur());
 
             let vector_carry_a1 = meta.query_advice(a_9, Rotation::prev());
 
@@ -798,13 +788,9 @@ impl MixingConfig {
             MixingGate::s_vector_a1(
                 s_vector_a1,
                 vector_m_a1,
-                vector_s_m_a1,
                 vector_n_a1,
-                vector_s_n_a1,
                 vector_o_a1,
-                vector_s_o_a1,
                 vector_p_a1,
-                vector_s_p_a1,
                 vector_carry_a1,
                 vector_m_a,
                 vector_n_a,
@@ -821,38 +807,35 @@ impl MixingConfig {
             )
         });
  
-    // todo why the upper sigma 0, 1 gates have only spread vals in rounds while the dense vals in gates section 
-    // keep the output of xor in spread and then do rotation
-    // Vd1 ← (Vd xor Va1) rotate right 32
+    
+        // keep the output of xor in spread and then do rotation
 
-    // do we range check even and odd bits? yes to prevent overflow and it also gives spread
-
-    //     a0   |   a1        |    a2         |     a3    |      a4    |   a5      |     a6     |    a7    |   a8     |   a9    |
-    //  {0,1,2} |  m_d1_even  |  s_m_d1_even  |  m_d1_odd | s_m_d1_odd | p_d1_even | s_p_d1_odd |  s_m_d   |  s_o_d   |   ----  |
-    //  {0,1,2} |  n_d1_even  |  s_n_d1_even  |  n_d1_odd | s_n_d1_odd | p_d1_odd  | s_p_d1_odd |  s_n_d   |  s_p_d   |   ----  |
-    //  {0,1,2} |  o_d1_even  |  s_o_d1_even  |  o_d1_odd | s_o_d1_odd | s_m_a1    |  s_n_a1    |  s_o_a1  |  s_p_a1  |   ----  |
-    //  {0,1,2} |  o_d1_even  |  s_o_d1_even  |  o_d1_odd | s_o_d1_odd | s_m_a1    |  s_n_a1    |  s_o_a1  |  s_p_a1  |   ----  |
-
-        // Vd1 ← (Vd xor Va1) rotate right 32
+        //     a0   |   a1        |    a2         |     a3    |      a4    |   a5     |     a6     |
+        //  ------- |  m_d1_even  |  s_m_d1_even  |  m_d1_odd | s_m_d1_odd | s_m_d    |   s_m_a1   |
+        //  ------- |  n_d1_even  |  s_n_d1_even  |  n_d1_odd | s_n_d1_odd | s_n_d    |   s_n_a1   |
+        //  ------- |  o_d1_even  |  s_o_d1_even  |  o_d1_odd | s_o_d1_odd | s_o_d    |  s_o_a1    |
+        //  ------- |  p_d1_even  |  s_p_d1_even  |  p_d1_odd | s_p_d1_odd | s_p_d    |  s_p_a1    |
+        // a3 is the output
+        // Vd1 ← (Vd xor Va1) rotate right 32 - 
         // (16, 16, 16, 16)-bit chunks
         meta.create_gate("s_vector_d1", |meta| {
 
-            let s_spread_d1 = meta.query_selector(s_spread_d1);
+            let s_vector_d1 = meta.query_selector(s_vector_d1);
 
             let spread_m_d1_even = meta.query_advice(a_2, Rotation::prev());
-            let spread_m_d1_odd = meta.query_advice(a_2, Rotation::cur());
-            let spread_n_d1_even = meta.query_advice(a_2, Rotation::next());
-            let spread_n_d1_odd = meta.query_advice(a_2, Rotation(2));
+            let spread_n_d1_even = meta.query_advice(a_2, Rotation::cur());
+            let spread_o_d1_even = meta.query_advice(a_2, Rotation::next());
+            let spread_p_d1_even = meta.query_advice(a_2, Rotation(2));
 
-            let spread_o_d1_even = meta.query_advice(a_2, Rotation(3));
-            let spread_o_d1_odd = meta.query_advice(a_2, Rotation(4));
-            let spread_p_d1_even = meta.query_advice(a_2, Rotation(5));
-            let spread_p_d1_odd = meta.query_advice(a_2, Rotation(6));
+            let spread_m_d1_odd = meta.query_advice(a_4, Rotation::prev());
+            let spread_n_d1_odd = meta.query_advice(a_4, Rotation::cur());
+            let spread_o_d1_odd = meta.query_advice(a_4, Rotation::next());
+            let spread_p_d1_odd = meta.query_advice(a_4, Rotation(2));
 
-            let spread_m_a1 = meta.query_advice(a_4, Rotation::prev());
-            let spread_n_a1 = meta.query_advice(a_4, Rotation::cur());
-            let spread_o_a1 = meta.query_advice(a_4, Rotation::next());
-            let spread_p_a1 = meta.query_advice(a_4, Rotation(2));
+            let spread_m_a1 = meta.query_advice(a_6, Rotation::prev());
+            let spread_n_a1 = meta.query_advice(a_6, Rotation::cur());
+            let spread_o_a1 = meta.query_advice(a_6, Rotation::next());
+            let spread_p_a1 = meta.query_advice(a_6, Rotation(2));
 
             let spread_m_d = meta.query_advice(a_5, Rotation::prev());
             let spread_n_d = meta.query_advice(a_5, Rotation::cur());
@@ -860,8 +843,8 @@ impl MixingConfig {
             let spread_p_d = meta.query_advice(a_5, Rotation(2));
 
 
-            MixingGate::s_spread_d1(
-                s_spread_d1,
+            MixingGate::s_vector_d1(
+                s_vector_d1,
                 spread_m_d1_even,
                 spread_m_d1_odd,
                 spread_n_d1_even,
@@ -881,32 +864,35 @@ impl MixingConfig {
             )
         });
 
+
+
+        //     a0     |   a1    |    a2     |  a3    |  a4    |  a5    |  a6   |  a7    |  a8     |  a9    |
+        //   -------  |  m_a1   |  s_m_a1   |  n_a1  | s_n_a1 |  m_a   |  n_a  |  o_a   |  p_a    |  c_a1  | 
+        //   -------  |  o_a1   |  s_o_a1   |  p_a1  | s_p_a1 |  m_b   |  n_b  |  o_b   |  p_b    |        |
+
         // Vc1 = Vc + Vd1 abcd words
+        // (16, 16, 16, 16)-bit into ( m, n, o, p ) chunks
 
-        //     a0     |   a1    |    a2     |  a3    |  a4    |  a5    |  a6   |
-        //  tag_m_a1  |  m_a1   |  s_m_a1   |a1_carry|  m_a   |  m_b   |  ---  |  ----   |
-        //  tag_n_a1  |  n_a1   |  s_m_a1   |        |  n_a   |  n_b   |  ---  |  ----   |
-        //  tag_o_a1  |  o_a1   |  s_m_a1   |        |  o_a   |  o_b   |  ---  |  ----   |
-        //  tag_p_a1  |  p_a1   |  s_m_a1   |        |  p_a   |  p_b   |  ---  |  ----   |
-
-        // Vc1=Vc+Vd1 abcd words
-        // (16, 16, 16, 16)-bit chunks
         meta.create_gate("s_vector_c1", |meta| {
+
             let s_vector_c1 = meta.query_selector(s_vector_c1);
+
             let vector_m_c1 = meta.query_advice(a_1, Rotation::prev());
-            let vector_n_c1 = meta.query_advice(a_1, Rotation::cur());
-            let vector_o_c1 = meta.query_advice(a_1, Rotation::next());
-            let vector_p_c1 = meta.query_advice(a_1, Rotation(2));
+            let vector_n_c1 = meta.query_advice(a_3, Rotation::prev());
+            let vector_o_c1 = meta.query_advice(a_1, Rotation::cur());
+            let vector_p_c1 = meta.query_advice(a_3, Rotation::cur());
 
-            let vector_m_c = meta.query_advice(a_4, Rotation::prev());
-            let vector_n_c = meta.query_advice(a_4, Rotation::cur());
-            let vector_o_c = meta.query_advice(a_4, Rotation::next());
-            let vector_p_c = meta.query_advice(a_4, Rotation(2));
+            let vector_carry_c1 = meta.query_advice(a_9, Rotation::prev());
 
-            let vector_m_d1 = meta.query_advice(a_5, Rotation::prev());
-            let vector_n_d1 = meta.query_advice(a_5, Rotation::cur());
-            let vector_o_d1 = meta.query_advice(a_5, Rotation::next());
-            let vector_p_d1 = meta.query_advice(a_5, Rotation(2));
+            let vector_m_c = meta.query_advice(a_5, Rotation::prev());
+            let vector_n_c = meta.query_advice(a_6, Rotation::prev());
+            let vector_o_c = meta.query_advice(a_7, Rotation::prev());
+            let vector_p_c = meta.query_advice(a_8, Rotation::prev());
+
+            let vector_m_d1 = meta.query_advice(a_5, Rotation::cur());
+            let vector_n_d1 = meta.query_advice(a_6, Rotation::cur());
+            let vector_o_d1 = meta.query_advice(a_7, Rotation::cur());
+            let vector_p_d1 = meta.query_advice(a_8, Rotation::cur());
 
 
             MixingGate::s_vector_c1(
@@ -915,6 +901,7 @@ impl MixingConfig {
                 vector_n_c1,
                 vector_o_c1,
                 vector_p_c1,
+                vector_carry_c1,
                 vector_m_c,
                 vector_n_c,
                 vector_o_c,
@@ -923,183 +910,285 @@ impl MixingConfig {
                 vector_n_d1,
                 vector_o_d1,
                 vector_p_d1,
-
             )
         });
 
-        // s_ch_neg on efgh words
-        // Second part of Choice gate on (E, F, G), ¬E ∧ G
-        meta.create_gate("s_ch_neg", |meta| {
-            let s_ch_neg = meta.query_selector(s_ch_neg);
-            let spread_q0_even = meta.query_advice(a_2, Rotation::prev());
-            let spread_q0_odd = meta.query_advice(a_2, Rotation::cur());
-            let spread_q1_even = meta.query_advice(a_2, Rotation::next());
-            let spread_q1_odd = meta.query_advice(a_3, Rotation::cur());
-            let spread_e_lo = meta.query_advice(a_5, Rotation::prev());
-            let spread_e_hi = meta.query_advice(a_5, Rotation::cur());
-            let spread_e_neg_lo = meta.query_advice(a_3, Rotation::prev());
-            let spread_e_neg_hi = meta.query_advice(a_4, Rotation::prev());
-            let spread_g_lo = meta.query_advice(a_3, Rotation::next());
-            let spread_g_hi = meta.query_advice(a_4, Rotation::next());
 
-            MixingGate::s_ch_neg(
-                s_ch_neg,
-                spread_q0_even,
-                spread_q0_odd,
-                spread_q1_even,
-                spread_q1_odd,
-                spread_e_lo,
-                spread_e_hi,
-                spread_e_neg_lo,
-                spread_e_neg_hi,
-                spread_g_lo,
-                spread_g_hi,
+        //     a0   |   a1        |    a2         |     a3    |      a4    |   a5     |     a6     |   a7     |
+        //  ------- |  m_d1_even  |  s_m_d1_even  |  m_d1_odd | s_m_d1_odd | s_m_d    |   s_m_a1   | s_n_hi_d |
+        //  ------- |  n_d1_even  |  s_n_d1_even  |  n_d1_odd | s_n_d1_odd | s_n_lo_d |  s_n_lo_a1 | s_n_hi_c1|
+        //  ------- |  o_d1_even  |  s_o_d1_even  |  o_d1_odd | s_o_d1_odd | s_o_d    |   s_o_a1   |   --     |
+        //  ------- |  p_d1_even  |  s_p_d1_even  |  p_d1_odd | s_p_d1_odd | s_p_d    |   s_p_a1   |   --     |
+        // a3 is the output
+        // Vb1 ← (Vb xor Vc1) rotate right 24
+        // (16, 16, 8, 8, 16)-bit chunks
+        meta.create_gate("s_vector_b1", |meta| {
+
+            let s_vector_b1 = meta.query_selector(s_vector_b1);
+
+            let spread_m_b1_even = meta.query_advice(a_2, Rotation::prev());
+            let spread_n_b1_even = meta.query_advice(a_2, Rotation::cur());
+            let spread_o_b1_even = meta.query_advice(a_2, Rotation::next());
+            let spread_p_b1_even = meta.query_advice(a_2, Rotation(2));
+
+            let spread_m_b1_odd = meta.query_advice(a_4, Rotation::prev());
+            let spread_n_b1_odd = meta.query_advice(a_4, Rotation::cur());
+            let spread_o_b1_odd = meta.query_advice(a_4, Rotation::next());
+            let spread_p_b1_odd = meta.query_advice(a_4, Rotation(2));
+
+            let spread_m_c1 = meta.query_advice(a_6, Rotation::prev());
+            let spread_n_lo_c1 = meta.query_advice(a_6, Rotation::cur());
+            let spread_n_hi_c1 = meta.query_advice(a_7, Rotation::cur());
+            let spread_o_c1 = meta.query_advice(a_6, Rotation::next());
+            let spread_p_c1 = meta.query_advice(a_6, Rotation(2));
+
+            let spread_m_b = meta.query_advice(a_5, Rotation::prev());
+            let spread_n_lo_b = meta.query_advice(a_5, Rotation::cur());
+            let spread_n_hi_b = meta.query_advice(a_7, Rotation::prev());
+            let spread_o_b = meta.query_advice(a_5, Rotation::next());
+            let spread_p_b = meta.query_advice(a_5, Rotation(2));
+
+
+            MixingGate::s_vector_b1(
+                s_vector_b1,
+                spread_m_b1_even,
+                spread_m_b1_odd,
+                spread_n_b1_even,
+                spread_n_b1_odd,
+                spread_o_b1_even,
+                spread_o_b1_odd,
+                spread_p_b1_even,
+                spread_p_b1_odd,
+                spread_m_c1,
+                spread_n_lo_c1,
+                spread_n_hi_c1,
+                spread_o_c1,
+                spread_p_c1,
+                spread_m_b,
+                spread_n_lo_b,
+                spread_n_hi_b,
+                spread_o_b,
+                spread_p_b,
             )
         });
 
-        // // Va2=Va1+Vb1+y abcd words
-        meta.create_gate("s_spread_a2", |meta| {
-            let s_spread_a2 = meta.query_selector(s_spread_a2);
-            let spread_m_a2 = meta.query_advice(a_2, Rotation::prev());
-            let spread_n_a2 = meta.query_advice(a_2, Rotation::cur());
-            let spread_o_a2 = meta.query_advice(a_2, Rotation::next());
-            let spread_p_a2 = meta.query_advice(a_3, Rotation::cur());
 
-            let spread_m_a1 = meta.query_advice(a_3, Rotation::next());
-            let spread_n_a1 = meta.query_advice(a_5, Rotation::cur());
-            let spread_o_a1 = meta.query_advice(a_3, Rotation::prev());
-            let spread_p_a1 = meta.query_advice(a_4, Rotation::cur());
+        //     a0     |   a1    |    a2     |  a3    |  a4    |  a5    |  a6   |  a7    |  a8     |  a9    |
+        //   -------  |  m_a1   |  s_m_a1   |  n_a1  | s_n_a1 |  m_a   |  n_a  |  o_a   |  p_a    |  c_a1  | 
+        //   -------  |  o_a1   |  s_o_a1   |  p_a1  | s_p_a1 |  m_b   |  n_b  |  o_b   |  p_b    |        |
+        //            |         |           |        |        |  m_x   |  n_x  |  o_x   |  p_x    |        |
 
-            let spread_m_b1 = meta.query_advice(a_3, Rotation::next());
-            let spread_n_b1 = meta.query_advice(a_5, Rotation::cur());
-            let spread_o_b1 = meta.query_advice(a_3, Rotation::prev());
-            let spread_p_b1 = meta.query_advice(a_4, Rotation::cur());
+        // Va2=Va1+Vb1+y abcd words
+        // (16, 16, 16, 16)-bit into ( m, n, o, p ) chunks
 
-            let spread_m_y = meta.query_advice(a_3, Rotation::next());
-            let spread_n_y = meta.query_advice(a_5, Rotation::cur());
-            let spread_o_y = meta.query_advice(a_3, Rotation::prev());
-            let spread_p_y = meta.query_advice(a_4, Rotation::cur());
+        meta.create_gate("s_vector_a2", |meta| {
+
+            let s_vector_a2 = meta.query_selector(s_vector_a2);
+
+            let vector_m_a2 = meta.query_advice(a_1, Rotation::prev());
+            let vector_n_a2 = meta.query_advice(a_3, Rotation::prev());
+            let vector_o_a2 = meta.query_advice(a_1, Rotation::cur());
+            let vector_p_a2 = meta.query_advice(a_3, Rotation::cur());
+
+            let vector_carry_a2 = meta.query_advice(a_9, Rotation::prev());
+
+            let vector_m_a1 = meta.query_advice(a_5, Rotation::prev());
+            let vector_n_a1 = meta.query_advice(a_6, Rotation::prev());
+            let vector_o_a1 = meta.query_advice(a_7, Rotation::prev());
+            let vector_p_a1 = meta.query_advice(a_8, Rotation::prev());
+
+            let vector_m_b1 = meta.query_advice(a_5, Rotation::cur());
+            let vector_n_b1 = meta.query_advice(a_6, Rotation::cur());
+            let vector_o_b1 = meta.query_advice(a_7, Rotation::cur());
+            let vector_p_b1 = meta.query_advice(a_8, Rotation::cur());
+
+            let vector_m_y = meta.query_advice(a_5, Rotation::next());
+            let vector_n_y = meta.query_advice(a_6, Rotation::next());
+            let vector_o_y = meta.query_advice(a_7, Rotation::next());
+            let vector_p_y = meta.query_advice(a_8, Rotation::next());
 
 
-            MixingGate::s_spread_a2(
-                s_spread_a2,
+            MixingGate::s_vector_a2(
+                s_vector_a2,
+                vector_m_a2,
+                vector_n_a2,
+                vector_o_a2,
+                vector_p_a2,
+                vector_carry_a2,
+                vector_m_a1,
+                vector_n_a1,
+                vector_o_a1,
+                vector_p_a1,
+                vector_m_b1,
+                vector_n_b1,
+                vector_o_b1,
+                vector_p_b1,
+                vector_m_y,
+                vector_n_y,
+                vector_o_y,
+                vector_p_y,
+            )
+        });
+ 
+
+        //     a0   |   a1        |    a2         |     a3    |      a4    |   a5     |     a6     |
+        //  ------- |  m_d1_even  |  s_m_d1_even  |  m_d1_odd | s_m_d1_odd | s_m_d    |   s_m_a1   |
+        //  ------- |  n_d1_even  |  s_n_d1_even  |  n_d1_odd | s_n_d1_odd | s_n_d    |   s_n_a1   |
+        //  ------- |  o_d1_even  |  s_o_d1_even  |  o_d1_odd | s_o_d1_odd | s_o_d    |  s_o_a1    |
+        //  ------- |  p_d1_even  |  s_p_d1_even  |  p_d1_odd | s_p_d1_odd | s_p_d    |  s_p_a1    |
+        // a3 is the output
+        // Vd2 ← (Vd1 xor Va2) rotate right 16
+        // (16, 16, 16, 16)-bit chunks
+        meta.create_gate("s_vector_d2", |meta| {
+
+            let s_vector_d2 = meta.query_selector(s_vector_d2);
+
+            let spread_m_d2_even = meta.query_advice(a_2, Rotation::prev());
+            let spread_n_d2_even = meta.query_advice(a_2, Rotation::cur());
+            let spread_o_d2_even = meta.query_advice(a_2, Rotation::next());
+            let spread_p_d2_even = meta.query_advice(a_2, Rotation(2));
+
+            let spread_m_d2_odd = meta.query_advice(a_4, Rotation::prev());
+            let spread_n_d2_odd = meta.query_advice(a_4, Rotation::cur());
+            let spread_o_d2_odd = meta.query_advice(a_4, Rotation::next());
+            let spread_p_d2_odd = meta.query_advice(a_4, Rotation(2));
+
+            let spread_m_a2 = meta.query_advice(a_6, Rotation::prev());
+            let spread_n_a2 = meta.query_advice(a_6, Rotation::cur());
+            let spread_o_a2 = meta.query_advice(a_6, Rotation::next());
+            let spread_p_a2 = meta.query_advice(a_6, Rotation(2));
+
+            let spread_m_d1 = meta.query_advice(a_5, Rotation::prev());
+            let spread_n_d1 = meta.query_advice(a_5, Rotation::cur());
+            let spread_o_d1 = meta.query_advice(a_5, Rotation::next());
+            let spread_p_d1 = meta.query_advice(a_5, Rotation(2));
+
+
+            MixingGate::s_vector_d2(
+                s_vector_d2,
+                spread_m_d2_even,
+                spread_m_d2_odd,
+                spread_n_d2_even,
+                spread_n_d2_odd,
+                spread_o_d2_even,
+                spread_o_d2_odd,
+                spread_p_d2_even,
+                spread_p_d2_odd,
                 spread_m_a2,
                 spread_n_a2,
                 spread_o_a2,
                 spread_p_a2,
-                spread_m_a1,
-                spread_n_a1,
-                spread_o_a1,
-                spread_p_a1,
-                spread_m_b1,
-                spread_n_b1,
-                spread_o_b1,
-                spread_p_b1,
-                spread_m_y,
-                spread_n_y,
-                spread_o_y,
-                spread_p_y,
-
+                spread_m_d1,
+                spread_n_d1,
+                spread_o_d1,
+                spread_p_d1,
             )
         });
 
-        // s_h_prime to compute H' = H + Ch(E, F, G) + s_upper_sigma_1(E) + K + W
-        meta.create_gate("s_h_prime", |meta| {
-            let s_h_prime = meta.query_selector(s_h_prime);
-            let h_prime_lo = meta.query_advice(a_7, Rotation::next());
-            let h_prime_hi = meta.query_advice(a_8, Rotation::next());
-            let h_prime_carry = meta.query_advice(a_9, Rotation::next());
-            let sigma_e_lo = meta.query_advice(a_4, Rotation::cur());
-            let sigma_e_hi = meta.query_advice(a_5, Rotation::cur());
-            let ch_lo = meta.query_advice(a_1, Rotation::cur());
-            let ch_hi = meta.query_advice(a_6, Rotation::next());
-            let ch_neg_lo = meta.query_advice(a_5, Rotation::prev());
-            let ch_neg_hi = meta.query_advice(a_5, Rotation::next());
-            let h_lo = meta.query_advice(a_7, Rotation::prev());
-            let h_hi = meta.query_advice(a_7, Rotation::cur());
-            let k_lo = meta.query_advice(a_6, Rotation::prev());
-            let k_hi = meta.query_advice(a_6, Rotation::cur());
-            let w_lo = meta.query_advice(a_8, Rotation::prev());
-            let w_hi = meta.query_advice(a_8, Rotation::cur());
 
-            MixingGate::s_h_prime(
-                s_h_prime,
-                h_prime_lo,
-                h_prime_hi,
-                h_prime_carry,
-                sigma_e_lo,
-                sigma_e_hi,
-                ch_lo,
-                ch_hi,
-                ch_neg_lo,
-                ch_neg_hi,
-                h_lo,
-                h_hi,
-                k_lo,
-                k_hi,
-                w_lo,
-                w_hi,
-            )
-        });
+        //     a0     |   a1    |    a2     |  a3    |  a4    |  a5    |  a6   |  a7    |  a8     |  a9    |
+        //   -------  |  m_a1   |  s_m_a1   |  n_a1  | s_n_a1 |  m_a   |  n_a  |  o_a   |  p_a    |  c_a1  | 
+        //   -------  |  o_a1   |  s_o_a1   |  p_a1  | s_p_a1 |  m_b   |  n_b  |  o_b   |  p_b    |        |
+
 
         // Vc2=Vc1+Vd2 abcd words
-        // (16, 16, 16, 16)-bit chunks
-        meta.create_gate("s_spread_c2", |meta| {
-            let s_spread_c2 = meta.query_selector(s_spread_c2);
-            let spread_m_c2 = meta.query_advice(a_2, Rotation::prev());
-            let spread_n_c2 = meta.query_advice(a_2, Rotation::cur());
-            let spread_o_c2 = meta.query_advice(a_2, Rotation::next());
-            let spread_p_c2 = meta.query_advice(a_3, Rotation::cur());
+        // (16, 16, 16, 16)-bit into ( m, n, o, p ) chunks
 
-            let spread_m_c1 = meta.query_advice(a_3, Rotation::next());
-            let spread_n_c1 = meta.query_advice(a_5, Rotation::cur());
-            let spread_o_c1 = meta.query_advice(a_3, Rotation::prev());
-            let spread_p_c1 = meta.query_advice(a_4, Rotation::cur());
+        meta.create_gate("s_vector_c2", |meta| {
 
-            let spread_m_d2 = meta.query_advice(a_3, Rotation::next());
-            let spread_n_d2 = meta.query_advice(a_5, Rotation::cur());
-            let spread_o_d2 = meta.query_advice(a_3, Rotation::prev());
-            let spread_p_d2 = meta.query_advice(a_4, Rotation::cur());
+            let s_vector_c2 = meta.query_selector(s_vector_c2);
+
+            let vector_m_c2 = meta.query_advice(a_1, Rotation::prev());
+            let vector_n_c2 = meta.query_advice(a_3, Rotation::prev());
+            let vector_o_c2 = meta.query_advice(a_1, Rotation::cur());
+            let vector_p_c2 = meta.query_advice(a_3, Rotation::cur());
+
+            let vector_carry_c2 = meta.query_advice(a_9, Rotation::prev());
+
+            let vector_m_c1 = meta.query_advice(a_5, Rotation::prev());
+            let vector_n_c1 = meta.query_advice(a_6, Rotation::prev());
+            let vector_o_c1 = meta.query_advice(a_7, Rotation::prev());
+            let vector_p_c1 = meta.query_advice(a_8, Rotation::prev());
+
+            let vector_m_d2 = meta.query_advice(a_5, Rotation::cur());
+            let vector_n_d2 = meta.query_advice(a_6, Rotation::cur());
+            let vector_o_d2 = meta.query_advice(a_7, Rotation::cur());
+            let vector_p_d2 = meta.query_advice(a_8, Rotation::cur());
 
 
-            MixingGate::s_spread_c2(
-                s_spread_c2,
-                spread_m_c2,
-                spread_n_c2,
-                spread_o_c2,
-                spread_p_c2,
-                spread_m_c1,
-                spread_n_c1,
-                spread_o_c1,
-                spread_p_c1,
-                spread_m_d2,
-                spread_n_d2,
-                spread_o_d2,
-                spread_p_d2,
-
+            MixingGate::s_vector_c2(
+                s_vector_c2,
+                vector_m_c2,
+                vector_n_c2,
+                vector_o_c2,
+                vector_p_c2,
+                vector_carry_c2,
+                vector_m_c1,
+                vector_n_c1,
+                vector_o_c1,
+                vector_p_c1,
+                vector_m_d2,
+                vector_n_d2,
+                vector_o_d2,
+                vector_p_d2,
             )
         });
 
-        // s_e_new
-        meta.create_gate("s_e_new", |meta| {
-            let s_e_new = meta.query_selector(s_e_new);
-            let e_new_lo = meta.query_advice(a_8, Rotation::cur());
-            let e_new_hi = meta.query_advice(a_8, Rotation::next());
-            let e_new_carry = meta.query_advice(a_9, Rotation::next());
-            let d_lo = meta.query_advice(a_7, Rotation::cur());
-            let d_hi = meta.query_advice(a_7, Rotation::next());
-            let h_prime_lo = meta.query_advice(a_7, Rotation::prev());
-            let h_prime_hi = meta.query_advice(a_8, Rotation::prev());
+        //     a0   |   a1        |    a2         |     a3    |      a4    |   a5     |     a6     |   a7     |
+        //  ------- |  m_d1_even  |  s_m_d1_even  |  m_d1_odd | s_m_d1_odd | s_m_d    |   s_m_a1   | s_n_hi_d |
+        //  ------- |  n_d1_even  |  s_n_d1_even  |  n_d1_odd | s_n_d1_odd | s_n_lo_d |  s_n_lo_a1 | s_n_hi_c1|
+        //  ------- |  o_d1_even  |  s_o_d1_even  |  o_d1_odd | s_o_d1_odd | s_o_d    |   s_o_a1   |   --     |
+        //  ------- |  p_d1_even  |  s_p_d1_even  |  p_d1_odd | s_p_d1_odd | s_p_d    |   s_p_a1   |   --     |
+        // a3 is the output
+        // Vb2 ← (Vb1 xor Vc2) rotate right 63
+        // (16, 16, 8, 8, 16)-bit chunks
+        meta.create_gate("s_vector_b2", |meta| {
 
-            MixingGate::s_e_new(
-                s_e_new,
-                e_new_lo,
-                e_new_hi,
-                e_new_carry,
-                d_lo,
-                d_hi,
-                h_prime_lo,
-                h_prime_hi,
+            let s_vector_b2 = meta.query_selector(s_vector_b2);
+
+            let spread_m_b2_even = meta.query_advice(a_2, Rotation::prev());
+            let spread_n_b2_even = meta.query_advice(a_2, Rotation::cur());
+            let spread_o_b2_even = meta.query_advice(a_2, Rotation::next());
+            let spread_p_b2_even = meta.query_advice(a_2, Rotation(2));
+
+            let spread_m_b2_odd = meta.query_advice(a_4, Rotation::prev());
+            let spread_n_b2_odd = meta.query_advice(a_4, Rotation::cur());
+            let spread_o_b2_odd = meta.query_advice(a_4, Rotation::next());
+            let spread_p_b2_odd = meta.query_advice(a_4, Rotation(2));
+
+            let spread_m_c2 = meta.query_advice(a_6, Rotation::prev());
+            let spread_n_lo_c2 = meta.query_advice(a_6, Rotation::cur());
+            let spread_n_hi_c2 = meta.query_advice(a_7, Rotation::cur());
+            let spread_o_c2 = meta.query_advice(a_6, Rotation::next());
+            let spread_p_c2 = meta.query_advice(a_6, Rotation(2));
+
+            let spread_m_b1 = meta.query_advice(a_5, Rotation::prev());
+            let spread_n_lo_b1 = meta.query_advice(a_5, Rotation::cur());
+            let spread_n_hi_b1 = meta.query_advice(a_7, Rotation::prev());
+            let spread_o_b1 = meta.query_advice(a_5, Rotation::next());
+            let spread_p_b1 = meta.query_advice(a_5, Rotation(2));
+
+
+            MixingGate::s_vector_b2(
+                s_vector_b2,
+                spread_m_b2_even,
+                spread_m_b2_odd,
+                spread_n_b2_even,
+                spread_n_b2_odd,
+                spread_o_b2_even,
+                spread_o_b2_odd,
+                spread_p_b2_even,
+                spread_p_b2_odd,
+                spread_m_c2,
+                spread_n_lo_c2,
+                spread_n_hi_c2,
+                spread_o_c2,
+                spread_p_c2,
+                spread_m_b1,
+                spread_n_lo_b1,
+                spread_n_hi_b1,
+                spread_o_b1,
+                spread_p_b1,
             )
         });
 
