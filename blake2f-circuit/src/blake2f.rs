@@ -25,7 +25,7 @@ mod table16;
 
  pub use table16::{BlockWord, Table16Chip, Table16Config};
 
-use self::table16::compression::{State, CompressionConfig};
+use self::table16::compression::{State, MixingConfig};
 
 
 //The [SHA-256] hash function.

@@ -5,11 +5,15 @@
     "dictionaries": [],
     "words": [
         "cmid",
+        "colns",
         "eips",
         "EIPS",
+        "enew",
         "evals",
         "hasher",
+        "hprime",
         "impllemented",
+        "roundworda",
         "sbhi",
         "sblo",
         "schi",
@@ -22,7 +26,8 @@
         "taga",
         "tagb",
         "tagc",
-        "tagd"
+        "tagd",
+        "vals"
     ],
     "ignoreWords": [
         "stateword"

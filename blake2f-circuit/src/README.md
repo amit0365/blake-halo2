@@ -1,3 +1,10 @@
+// figure out best gate layout 2 vs 3 rows -- requires checking gates design for addition and xor's
+// use only spread for xor,
+
+// assign spread vals in the region for the output of addition gate which is used by following xor gate
+// in addition the operand are range checked while decomposing into chunks but result needs to be checked, this gives us additionally the spread form which can be used by the following xor
+
+
 Function Compress
    Input:
       h                      Persistent state vector
@@ -130,3 +137,4 @@ End Function Mix
 // how decompose_efgh and decompose_e work?
 
 // ask halo2 discord if word lo hi required in decompose abcd
+

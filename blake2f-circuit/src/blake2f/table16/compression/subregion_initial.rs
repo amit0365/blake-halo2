@@ -1,12 +1,12 @@
 use super::super::{RoundWord, StateWord, STATE};
-use super::{compression_util::*, CompressionConfig, State};
+use super::{compression_util::*, MixingConfig, State};
 use halo2_proofs::{
     circuit::{Region, Value},
     pasta::pallas,
     plonk::Error,
 };
 
-impl CompressionConfig {
+impl MixingConfig {
     #[allow(clippy::many_single_char_names)]
     pub fn initialize_iv(
         &self,

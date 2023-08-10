@@ -2,9 +2,8 @@
 // todo rotation
 
 // will the spread form handle carry? i think so. in that case keep the calc in spread
-// does the carry get added to the e_new value in the next round
+// does the carry get added to the e_new value in the next round -- no the carry gets chopped since mod 2^^64
 
-// find enable equality copy advice - in table16 add all advice columns to permutation - solved
 // The inputs we've been given could be located anywhere in the circuit,
 // but we can only rely on relative offsets inside this region. So we
 // assign new cells inside the region and constrain them to have the
@@ -15,7 +14,7 @@
 // while constraining dense forms by lookup, get spread of final outputs which will be used further 
 
 use super::{
-    AbcdVar, CompressionConfig, EfghVar, RoundWord, RoundWordA, RoundWordDense, RoundWordE,
+    AbcdVar, MixingConfig, EfghVar, RoundWord, RoundWordA, RoundWordDense, RoundWordE,
     RoundWordSpread, State, UpperSigmaVar, StateWord, IjklVar,
 };
 use crate::blake2f::table16::{
@@ -220,7 +219,7 @@ pub fn get_digest_efgh_row() -> usize {
     get_digest_abcd_row() + 2
 }
 
-impl CompressionConfig {
+impl MixingConfig {
     pub(super) fn decompose_abcd(
         &self,
         region: &mut Region<'_, pallas::Base>,
@@ -259,10 +258,10 @@ impl CompressionConfig {
         )?;
 
         Ok(AbcdVar {
-            a,
-            b,
-            c,
-            d,
+            m,
+            n,
+            o,
+            p,
         })
     }
 
@@ -311,11 +310,11 @@ impl CompressionConfig {
         )?;
 
         Ok(EfghVar {
-            a,
-            b_lo,
-            b_hi,
-            c,
-            d,
+            m,
+            n_lo,
+            n_hi,
+            o,
+            p,
         })
     }
 
@@ -362,11 +361,11 @@ impl CompressionConfig {
         )?;
 
         Ok(IjklVar {
-            a,
-            b,
-            c,
-            d_lo,
-            d_hi,
+            m,
+            n,
+            o,
+            p_lo,
+            p_hi,
         })
     }
 
@@ -546,6 +545,7 @@ impl CompressionConfig {
         Ok(odd)
     }
 
+// todo complete this
 // gates only take spread values
 pub(super) fn assign_c1(
     &self,
@@ -895,7 +895,7 @@ pub(super) fn assign_c1(
 
         Ok((
             (w_lo.dense, w_mo.dense, w_el.dense, w_hi.dense).into(),
-            (w_lo.spread, w_mo.dense, w_el.dense, w_hi.spread).into(),
+            (w_lo.spread, w_mo.spread, w_el.spread, w_hi.spread).into(),
         ))
     }
 }

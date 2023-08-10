@@ -9,16 +9,15 @@ use group::ff::{Field, PrimeField};
 use halo2_proofs::plonk::{Constraint, Constraints, Expression};
 use std::marker::PhantomData;
 
-pub struct CompressionGate<F: Field>(PhantomData<F>);
+pub struct MixingGate<F: Field>(PhantomData<F>);
 
-impl<F: PrimeField> CompressionGate<F> {
+impl<F: PrimeField> MixingGate<F> {
     fn ones() -> Expression<F> {
         Expression::Constant(F::ONE)
     }
 
     // Decompose `A,B,C,D` words
     // (16, 16, 16, 16)-bit chunks
-    // no tag required for 16bit chunks
     #[allow(clippy::too_many_arguments)]
     pub fn s_decompose_abcd(
         s_decompose_abcd: Expression<F>,
@@ -59,8 +58,8 @@ impl<F: PrimeField> CompressionGate<F> {
             + spread_d * F::from(1 << 96)
 
             + spread_word_lo * (-F::ONE)
-            + spread_word_hi * F::from(1 << 32) * (-F::ONE)
-            + spread_word_hi * F::from(1 << 64) * (-F::ONE)
+            + spread_word_mo * F::from(1 << 32) * (-F::ONE)
+            + spread_word_el * F::from(1 << 64) * (-F::ONE)
             + spread_word_hi * F::from(1 << 96) * (-F::ONE);
 
         Constraints::with_selector(
@@ -79,8 +78,10 @@ impl<F: PrimeField> CompressionGate<F> {
         s_decompose_efgh: Expression<F>,
         e: Expression<F>,
         spread_e: Expression<F>,
+        tag_f_lo: Expression<F>,
         f_lo: Expression<F>,
         spread_f_lo: Expression<F>,
+        tag_f_hi: Expression<F>,
         f_hi: Expression<F>,
         spread_f_hi: Expression<F>,
         g: Expression<F>,
@@ -106,22 +107,32 @@ impl<F: PrimeField> CompressionGate<F> {
             + f_hi * F::from(1 << 16)
             + g * F::from(1 << 32)
             + h * F::from(1 << 48)
+
             + word_lo * (-F::ONE)
-            + word_lo * (-F::ONE)
-            + word_hi * F::from(1 << 32) * (-F::ONE);
+            + word_mo * F::from(1 << 16) * (-F::ONE)
+            + word_el * F::from(1 << 32) * (-F::ONE)
+            + word_hi * F::from(1 << 48) * (-F::ONE);
+
+        let range_check_tag_f_lo: Expression<F> = Gate::range_check(tag_f_lo, 0, 0);
+        let range_check_tag_f_hi: Expression<F> = Gate::range_check(tag_f_hi, 0, 0);
 
         let spread_check = spread_e
             + spread_f_lo * F::from(1 << 16)
             + spread_f_hi * F::from(1 << 32)
             + spread_g * F::from(1 << 64)
             + spread_h * F::from(1 << 96)
+
             + spread_word_lo * (-F::ONE)
-            + spread_word_hi * F::from(1 << 64) * (-F::ONE);
+            + spread_word_mo * F::from(1 << 32) * (-F::ONE)
+            + spread_word_el * F::from(1 << 64) * (-F::ONE)
+            + spread_word_hi * F::from(1 << 96) * (-F::ONE);
 
         Constraints::with_selector(
             s_decompose_efgh,
             dense_check
-                .chain(Some(("spread_check", spread_check))),
+                .chain(Some(("spread_check", spread_check)))
+                .chain(Some(("range_check_tag_f_lo", range_check_tag_f_lo)))
+                .chain(Some(("range_check_tag_f_hi", range_check_tag_f_hi))),
         )
 
     }
@@ -133,16 +144,16 @@ impl<F: PrimeField> CompressionGate<F> {
     #[allow(clippy::too_many_arguments)]
     pub fn s_decompose_ijkl(
         s_decompose_efgh: Expression<F>,
-        i: Expression<F>,
-        spread_i: Expression<F>,
+        i_lo: Expression<F>,
+        spread_i_lo: Expression<F>,
+        i_hi: Expression<F>,
+        spread_i_hi: Expression<F>,
         j: Expression<F>,
         spread_j: Expression<F>,
         k: Expression<F>,
         spread_k: Expression<F>,
-        l_lo: Expression<F>,
-        spread_l_lo: Expression<F>,
-        l_hi: Expression<F>,
-        spread_l_hi: Expression<F>,
+        l: Expression<F>,
+        spread_l: Expression<F>,
         word_lo: Expression<F>,
         spread_word_lo: Expression<F>,
         word_mo: Expression<F>,
@@ -162,7 +173,6 @@ impl<F: PrimeField> CompressionGate<F> {
             + l_lo * F::from(1 << 48)
             + l_hi * F::from(1 << 63)
 
-            // what is word_lo/word_hi?
             + word_lo * (-F::ONE)
             + word_mo * F::from(1 << 16) * (-F::ONE)
             + word_el * F::from(1 << 32) * (-F::ONE)
@@ -188,8 +198,9 @@ impl<F: PrimeField> CompressionGate<F> {
     }
 
 
-// First gate addition modulo, Va ← Va + Vb + x   with input
-// todo change decomposition of words a,b,c,d after each rounds
+// First gate addition modulo, Va ← Va + Vb + x  with input
+// todo change decomposition of words a,b,c,d after each rounds??
+// only one carry since carries for each splits are propagated into next split 
 #[allow(clippy::too_many_arguments)]
     pub fn s_vector_a1(
         s_vector_a1: Expression<F>,
@@ -211,6 +222,7 @@ impl<F: PrimeField> CompressionGate<F> {
         vector_o_x: Expression<F>,
         vector_p_x: Expression<F>,
     ) -> Option<(&'static str, Expression<F>)> {
+
         let vector_a = vector_m_a + vector_n_a * F::from(1 << 32) + vector_o_a * F::from(1 << 64) + vector_p_a * F::from(1 << 96);
         let vector_b = vector_m_b + vector_n_b * F::from(1 << 32) + vector_o_b * F::from(1 << 64) + vector_p_b * F::from(1 << 96);
         let vector_x = vector_m_x + vector_n_x * F::from(1 << 32) + vector_o_x * F::from(1 << 64) + vector_p_x * F::from(1 << 96);
@@ -218,7 +230,7 @@ impl<F: PrimeField> CompressionGate<F> {
 
         let vector_a1 = vector_m_a1 + vector_n_a1 * F::from(1 << 16) + vector_o_a1 * F::from(1 << 32) + vector_p_a1 * F::from(1 << 48);
 
-        // WITNESS THE ADDITION
+        // WITNESS ADDITION
         let check = vector_sum - (vector_a1_carry * F::from(1 << 32)) - vector_a1;
 
         Some(("vector_a1", s_vector_a1 * (vector_sum - vector_a1)))

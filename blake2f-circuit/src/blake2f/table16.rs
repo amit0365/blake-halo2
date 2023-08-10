@@ -240,8 +240,7 @@ pub mod gate;
  #[derive(Clone, Debug)]
  pub struct Table16Config {
      lookup: SpreadTableConfig,
-     //message_schedule: MessageScheduleConfig,
-     compression: CompressionConfig,
+     compression: MixingConfig,
  }
 
  // A chip that implements SHA-256 with a maximum lookup table size of $2^16$.
@@ -308,20 +307,19 @@ pub mod gate;
          let a_8 = extras[4];
          let _a_9 = extras[5];
 
-          //Add all advice columns to permutation
+          // Add all advice columns to permutation
          for column in [a_1, a_2, a_3, a_4, a_5, a_6, a_7, a_8].iter() {
              meta.enable_equality(*column);
          }
 
          let compression =
-             CompressionConfig::configure(meta, lookup_inputs.clone(), message_schedule, extras);
+             MixingConfig::configure(meta, lookup_inputs.clone(), extras);
 
         //  let message_schedule =
         //      MessageScheduleConfig::configure(meta, lookup_inputs, message_schedule, extras);
 
          Table16Config {
              lookup,
-             //message_schedule,
              compression,
          }
      }
