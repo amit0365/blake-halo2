@@ -15,7 +15,7 @@ use std::marker::PhantomData;
 
 use super::{util::{spread_bits, lebs2ip, i2lebsp}, compression::RoundWordSpread, AssignedBits};
 
-use super::{util::*};
+use super::util::*;
 
 const BITS_8: usize = 1 << 8;
 const BITS_15: usize = 1 << 15;

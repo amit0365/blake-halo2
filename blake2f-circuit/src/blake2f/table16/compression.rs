@@ -323,6 +323,7 @@ impl RoundWordSpread {
     }
 }
 
+// todo what is roundworda
 #[derive(Clone, Debug)]
 pub struct RoundWordA {
     pieces: Option<AbcdVar>,
@@ -489,10 +490,12 @@ pub enum StateWord {
     V15(ConstantWord),
 }
 
+// todo implement compression
+
 #[derive(Clone, Debug)]
 pub(crate) struct MixingConfig {
     lookup: SpreadInputs,
-    extras: [Column<Advice>; 6],
+    extras: [Column<Advice>; 5],
     s_vector_a1: Selector,
     s_vector_b1: Selector,
     s_vector_c1: Selector,
@@ -520,7 +523,7 @@ impl MixingConfig {
     pub(super) fn configure(
         meta: &mut ConstraintSystem<pallas::Base>,
         lookup: SpreadInputs,
-        extras: [Column<Advice>; 6],
+        extras: [Column<Advice>; 5],
     ) -> Self {
         let s_vector_a1 = meta.selector();
         let s_vector_b1 = meta.selector();
@@ -1192,6 +1195,7 @@ impl MixingConfig {
             )
         });
 
+        // todo
         // s_digest for final round
         meta.create_gate("s_digest", |meta| {
             let s_digest = meta.query_selector(s_digest);
@@ -1243,6 +1247,7 @@ impl MixingConfig {
         }
     }
 
+    // todo
     /// Initialize compression with a constant Initialization Vector of 32-byte words.
     /// Returns an initialized state.
     pub(super) fn initialize_with_iv(
